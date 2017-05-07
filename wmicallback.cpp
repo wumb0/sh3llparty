@@ -9,6 +9,18 @@
 
 using namespace std;
 
+BOOL putStringInClass(IWbemClassObject *obj, BSTR key, BSTR val, tag_CIMTYPE_ENUMERATION type){
+	VARIANT v;
+	HRESULT hr;
+	VariantInit(&v);
+	v.vt = VT_BSTR;
+	v.bstrVal = val;
+	hr = obj->Put(key, 0, &v, type);
+	if (FAILED(hr))
+		return FALSE;
+	return TRUE;
+}
+
 void scheduleCallback(){
 	IWbemLocator *ploc = NULL;
 	IWbemServices *psvc = NULL;
