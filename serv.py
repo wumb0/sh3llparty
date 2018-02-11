@@ -136,4 +136,8 @@ def index():
 if __name__ == '__main__':
     db.create_all()
     db.session.commit()
-    app.run(host='0.0.0.0', port=8000)
+    args = {'host': '0.0.0.0',
+            'port': 8000}
+    if app.config["SSL"]:
+        args['ssl_context'] = (app.config["SSL_CERT"], app.config["SSL_KEY"])
+    app.run(**args)
