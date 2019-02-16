@@ -41,6 +41,18 @@
 		inp.wrap('<form>').closest('form').get(0).reset();
 		inp.unwrap();
 	}
+    var highlightList = [];
+    function saveHighlight() {
+        $(".selected").each(function(i){
+            highlightList.push(this.className.match(/__id-\d+/));
+        });
+    }
+    function restoreHighlight(settings) {
+        $.each(highlightList, function(i){
+            $("."+this[i]).addClass("selected");
+        });
+        highlightList = [];
+    }
     $(document).ready(function(){
 	var filebotlist = [];
 	clearFile();
@@ -57,7 +69,11 @@
 				"orderable": false,
 				"targets": -1
 			}
-		]
+		],
+                "createdRow": function (r, d, i){
+                    $(r).addClass("__id-"+d[0]);
+                },
+                "drawCallback": restoreHighlight
 	} );
 	$('#bottable tbody').on( 'click', '#info', function () {
 			var data = table.row( $(this).parents('tr') ).data();
@@ -186,8 +202,9 @@
 		} );
 	} );
 	setInterval( function () {
+            saveHighlight();
 	    table.ajax.reload();
-	}, 15000 );
+	}, 5000 );
     });
     </script>
 {% endblock footer %}

@@ -16,7 +16,7 @@ def check_auth(username, password):
     """This function is called to check if a username /
     password combination is valid.
     """
-    return username == 'jimmy' and password == 'natsys1!'
+    return username == app.config["USERNAME"] and password == app.config["PASSWORD"]
 
 def authenticate():
     """Sends a 401 response that enables basic auth"""
@@ -46,7 +46,7 @@ class HostBot(db.Model):
 
     @hybrid_property
     def resp_b64(self):
-        return b64e(self.resp)
+        return b64e(self.resp.encode('utf-8'))
 
     @hybrid_property
     def serialize(self):
@@ -71,7 +71,7 @@ def cb(route):
     b.last_cb = datetime.now()
     db.session.add(b)
     db.session.commit()
-    return b.resp_b64 if b.resp else b64e("exit")
+    return b.resp_b64 if b.resp else b64e(b"exit")
 
 @app.route('/bootstrap/<hostid>', methods=["POST"])
 def bootstrap(hostid):
