@@ -115,7 +115,7 @@ def update(id):
         b.resp = t
     elif f:
         print("Read file")
-        b.resp = f.read()
+        b.resp = f.read().decode("utf-8")
     db.session.add(b)
     db.session.commit()
     return '', 200
