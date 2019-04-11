@@ -1,0 +1,12 @@
+[Unit]
+Description=Welcome to the sh3ll party
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/sh3llparty
+ExecStart=/usr/local/bin/uwsgi --ini wsgi.ini
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
